@@ -1,0 +1,16 @@
+name: single multirotor inbound, two RF + one radar
+duration_s: 120
+targets:
+  - id: T1
+    kind: multirotor
+    waypoints:            # [t, x, y, z] metres in site frame
+      - [0, 2000, 0, 80]
+      - [120, 0, 0, 40]
+sensors:
+  - {id: rf-1, kind: rf, x: 0, y: 300, range_m: 1500, pd: 0.85, sigma_m: 25}
+  - {id: rf-2, kind: rf, x: 0, y: -300, range_m: 1500, pd: 0.85, sigma_m: 25}
+  - {id: radar-1, kind: radar, x: 100, y: 0, range_m: 1200, pd: 0.95, sigma_m: 5, false_alarm_rate_hz: 0.05}
+criteria:
+  pd_min: 0.7
+  false_per_min_max: 6
+  time_to_detect_max_s: 40

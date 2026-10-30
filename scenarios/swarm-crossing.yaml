@@ -1,0 +1,12 @@
+name: three-drone crossing swarm
+duration_s: 90
+targets:
+  - {id: S1, waypoints: [[0, -1000, 400, 60], [90, 1000, 400, 60]]}
+  - {id: S2, waypoints: [[0, -1000, 0, 70], [90, 1000, 0, 70]]}
+  - {id: S3, waypoints: [[10, -1000, -400, 50], [90, 1000, -400, 50]]}
+sensors:
+  - {id: radar-1, kind: radar, x: 0, y: 0, range_m: 1100, pd: 0.9, sigma_m: 6, false_alarm_rate_hz: 0.05}
+  - {id: eo-1, kind: eo, x: 0, y: 600, range_m: 500, pd: 0.8, sigma_m: 3}
+criteria:
+  pd_min: 0.6
+  false_per_min_max: 6

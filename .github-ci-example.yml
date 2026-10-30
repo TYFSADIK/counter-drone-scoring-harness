@@ -1,0 +1,13 @@
+# Copy to .github/workflows/scenarios.yml: every push re-scores every scenario card.
+name: scenarios
+on: [push]
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt
+      - run: python -m harness.cli scenarios/*.yaml
+      - run: python -m unittest -v
