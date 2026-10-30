@@ -1,6 +1,6 @@
 # Counter-Drone Test-and-Scoring Harness with Sensor-Fleet Operations
 
-Written by [Taki Sadik](../../about.html) · Last updated 2026-10-24 · Status: Planned, build guide published · 13 min read
+Written by [Taki Sadik](https://tyfsadik.org/about.html) · Last updated 2026-10-24 · Status: Planned, build guide published · 13 min read
 
 A test-and-scoring harness for counter-drone sensors: SAPIENT (BSI Flex 335) interfaces on the nodes, a TAK bridge, scenario cards mirroring the IDEaS sandbox, Stone Soup metrics, a Monte Carlo coverage planner, and fleet operations with signed OTA and health monitoring.
 
@@ -8,28 +8,18 @@ A test-and-scoring harness for counter-drone sensors: SAPIENT (BSI Flex 335) int
 
 This is a published build guide for a counter-drone test-and-scoring harness: software that connects low-cost sensor nodes to military command-and-control standards (SAPIENT and Cursor on Target), runs repeatable YAML scenario cards against time-synced ground truth, scores performance with Stone Soup metrics, plans sensor coverage, and operates the resulting node fleet with signed updates and health monitoring.
 
-Status: Planned. Nothing on this page is built, tested, measured, or flown yet. The guide is written against real Canadian government requirements: the IDEaS counter-drone sandbox guide, which asks for systems that integrate into military C2 and names networks of low-cost sensors as an emphasis area, and the CAF national counter-drone tender, which asked a contractor to design, install, integrate, test, validate, maintain, sustain and modernize the capability as a service (verify dates/scope). This build puts DevOps and test discipline into that gap: the boring, decisive work of knowing what a sensor network actually does and proving it with numbers.
+Status: **Planned**. Nothing on this page is built, tested, measured, or flown yet. The guide is written against real Canadian government requirements: the IDEaS counter-drone sandbox guide, which asks for systems that integrate into military C2 and names networks of low-cost sensors as an emphasis area, and the CAF national counter-drone tender, which asked a contractor to design, install, integrate, test, validate, maintain, sustain and modernize the capability as a service (verify dates/scope). This build puts DevOps and test discipline into that gap: the boring, decisive work of knowing what a sensor network actually does and proving it with numbers.
 
-The sandbox itself rewards honesty. Teams are encouraged to push a system to failure so its limits are understood, and plain radar, acoustic, RF or optical detection is less likely to be selected unless it is clearly improved. A scoring harness is exactly the tool for that: it produces the detection probability vs range curves, false-alarm rates and failure envelopes that make a submission credible, and it stays useful for any sensor build, including the [counter-drone sensor fusion](counter-drone-sensor-fusion.html) build on this site.
+The sandbox itself rewards honesty. Teams are encouraged to push a system to failure so its limits are understood, and plain radar, acoustic, RF or optical detection is less likely to be selected unless it is clearly improved. A scoring harness is exactly the tool for that: it produces the detection probability vs range curves, false-alarm rates and failure envelopes that make a submission credible, and it stays useful for any sensor build, including the [counter-drone sensor fusion](https://github.com/TYFSADIK/counter-drone-sensor-fusion) build on this site.
 
 The work is software and simulation first, which fits the southern Ontario winter calendar: this is one of the builds scheduled for the October to December window, before any outdoor drone work resumes in spring. It follows the shared rules for all six defence builds on this site: defensive only, synthetic data where anything mimics protected material, testing only my own gear with permission, and one repo with README, docs, sim, test, data, results, LICENSE, SBOM and signed releases.
-
-## Gallery
-
-What each part of the photo does:
-
-- Sensor nodes: each detection sensor reports what it saw and when, so every claim can be scored.
-
-- Scoring dashboard: plots detection probability against range, the honest way to compare sensors.
-
-- Coverage map: shows the planned node placement and where the gaps in coverage are.
 
 ## Target Spec: What the IDEaS Sandbox Asks
 
 The IDEaS counter-drone sandbox guide defines threat classes, hard cases, six scenarios and the C2 protocols in use. The table below restates those requirements as the spec sheet this harness is built to serve. The harness does not itself detect drones; it measures how well a sensor network meets these requirements.
 
 | Requirement area | Sandbox spec | How the harness serves it |
-| --- | --- | --- |
+|----|----|----|
 | Threat class: micro UAS | Under 2 kg, up to 200 ft AGL, about 5 km radius, up to 200 km/h | Scenario cards and SITL truth matching this class |
 | Threat class: mini UAS | 2-15 kg, up to 3,000 ft AGL, about 25 km radius, up to 200 km/h | Scenario cards and SITL truth matching this class |
 | Hard cases | Drones under 250 g, fast FPV, swarms of 3+, fibre-optic tethered drones (tethers to 30 km), birds and clutter, rain, fog, snow, night | Environment and class tags on every scenario card; birds logged as their own false-alarm class |
@@ -48,49 +38,51 @@ The IDEaS counter-drone sandbox guide defines threat classes, hard cases, six sc
 
 A solo bench build cannot field a national counter-drone capability, and this page does not pretend otherwise. What it can prove, with published data, is the engineering discipline the sandbox and the tender both ask for:
 
-- Standards compliance at the edge: sensor nodes that register and report over SAPIENT (BSI Flex 335) protobuf messages, verified against the official open-source compliance test harness, and bridged into TAK as Cursor on Target markers.
-
-- Repeatable, honest scoring: the same scenario cards run in simulation and against recorded real logs, scored with Stone Soup SIAP metrics, OSPA and CLEAR-MOT, with regression thresholds in CI so a change that degrades detection fails the build.
-
-- Quantified coverage: measured detection probability vs range turned into node counts, spacing and cost per kilometre for the fixed-base and linear-border scenarios via Monte Carlo planning.
-
-- Fleet operations: signed A/B over-the-air updates, Prometheus health monitoring, per-site acceptance tests and runbooks that mirror the tender lifecycle (install, integrate, test, validate, maintain, sustain, modernize).
-
-- A published failure envelope: every metric pushed to failure, with the limit written down where others can read it.
+- **Standards compliance at the edge:** sensor nodes that register and report over SAPIENT (BSI Flex 335) protobuf messages, verified against the official open-source compliance test harness, and bridged into TAK as Cursor on Target markers.
+- **Repeatable, honest scoring:** the same scenario cards run in simulation and against recorded real logs, scored with Stone Soup SIAP metrics, OSPA and CLEAR-MOT, with regression thresholds in CI so a change that degrades detection fails the build.
+- **Quantified coverage:** measured detection probability vs range turned into node counts, spacing and cost per kilometre for the fixed-base and linear-border scenarios via Monte Carlo planning.
+- **Fleet operations:** signed A/B over-the-air updates, Prometheus health monitoring, per-site acceptance tests and runbooks that mirror the tender lifecycle (install, integrate, test, validate, maintain, sustain, modernize).
+- **A published failure envelope:** every metric pushed to failure, with the limit written down where others can read it.
 
 ## Architecture
 
-Sensor nodes
-
-Truth sources
-
-ArduPilot SITL multi-drone + sensor models
-
-Real flight logs (own drone, ArduPilot + GNSS)
-
-Node 1: sensor + SAPIENT adapter
-
-Node 2: sensor + SAPIENT adapter
-
-Node N: sensor + SAPIENT adapter
-
-GPS PPS + chrony time sync on every node
-
-Fusion node: SAPIENT middleware (protobuf over TCP)
-
-SAPIENT to CoT bridge (snstac sapientcot) + native CoT output
-
-TAK Server / ATAK
-
-YAML scenario cards
-
-Scoring harness: Stone Soup SIAP, OSPA, CLEAR-MOT
-
-Coverage planner: Monte Carlo node count and spacing
-
-CI: nightly scenarios, regression thresholds, signed images
-
-Fleet ops: A/B OTA (Mender or RAUC) + Prometheus health
+```mermaid
+flowchart LR
+  subgraph SIM["Truth sources"]
+    SITL["ArduPilot SITL multi-drone + sensor models"]
+    LOGS["Real flight logs (own drone, ArduPilot + GNSS)"]
+  end
+  subgraph NODES["Sensor nodes"]
+    N1["Node 1: sensor + SAPIENT adapter"]
+    N2["Node 2: sensor + SAPIENT adapter"]
+    NN["Node N: sensor + SAPIENT adapter"]
+  end
+  TIME["GPS PPS + chrony time sync on every node"]
+  FUS["Fusion node: SAPIENT middleware (protobuf over TCP)"]
+  BRIDGE["SAPIENT to CoT bridge (snstac sapientcot) + native CoT output"]
+  TAK["TAK Server / ATAK"]
+  CARDS["YAML scenario cards"]
+  SCORE["Scoring harness: Stone Soup SIAP, OSPA, CLEAR-MOT"]
+  PLAN["Coverage planner: Monte Carlo node count and spacing"]
+  CI["CI: nightly scenarios, regression thresholds, signed images"]
+  OPS["Fleet ops: A/B OTA (Mender or RAUC) + Prometheus health"]
+  SITL --> SCORE
+  LOGS --> SCORE
+  N1 --> FUS
+  N2 --> FUS
+  NN --> FUS
+  TIME --- NODES
+  TIME --- LOGS
+  FUS --> BRIDGE
+  FUS --> SCORE
+  BRIDGE --> TAK
+  CARDS --> SITL
+  CARDS --> SCORE
+  SCORE --> PLAN
+  SCORE --> CI
+  OPS --> NODES
+  CI --> OPS
+```
 
 Every sensor node runs a small adapter that registers with the fusion node and sends status and detection reports as SAPIENT protobuf messages over TCP, the edge-to-fusion pattern defined in BSI Flex 335. The fusion node runs the open-source Dstl middleware. A bridge converts detections to Cursor on Target so they appear in TAK Server and ATAK, using snstac sapientcot where version support allows (verify), plus a native CoT output path as a fallback.
 
@@ -102,92 +94,71 @@ Ten phases, roughly in order. Weeks are planning estimates, not commitments. Eac
 
 ### Phase 0: Standards (weeks 1-2)
 
-- Read BSI Flex 335 v2 (March 2024, free from BSI; verify date) and take notes on the message set: registration, status reports, detection and track reports.
-
-- Clone the Dstl SAPIENT middleware and compliance test harness, released open source under Apache 2.0 in 2022. That release predates Flex 335 v2, so check which interface version the middleware speaks before building on it.
-
-- Write down the protobuf-over-TCP edge-to-fusion pattern as the architecture contract for every later phase.
+1.  Read BSI Flex 335 v2 (March 2024, free from BSI; verify date) and take notes on the message set: registration, status reports, detection and track reports.
+2.  Clone the Dstl SAPIENT middleware and compliance test harness, released open source under Apache 2.0 in 2022. That release predates Flex 335 v2, so check which interface version the middleware speaks before building on it.
+3.  Write down the protobuf-over-TCP edge-to-fusion pattern as the architecture contract for every later phase.
 
 ### Phase 1: SAPIENT adapter and TAK bridge (weeks 2-5)
 
-- Build a node adapter that registers with the fusion node and sends status and detection reports using the official protos.
-
-- Verify the adapter against the official compliance test harness; a passing compliance run is the phase gate.
-
-- Forward detections to TAK with snstac sapientcot (verify version support) and add a native CoT output so nodes can emit Cursor on Target directly when the bridge path is not needed.
-
-- Confirm markers appear in ATAK with correct position and identity fields.
+1.  Build a node adapter that registers with the fusion node and sends status and detection reports using the official protos.
+2.  Verify the adapter against the official compliance test harness; a passing compliance run is the phase gate.
+3.  Forward detections to TAK with snstac sapientcot (verify version support) and add a native CoT output so nodes can emit Cursor on Target directly when the bridge path is not needed.
+4.  Confirm markers appear in ATAK with correct position and identity fields.
 
 ### Phase 2: Ground truth and time (weeks 4-6)
 
-- Use my own drone's ArduPilot logs with GNSS as truth; add RTK if possible for tighter truth position.
-
-- Put GPS PPS plus chrony on every node so all clocks discipline against the same pulse.
-
-- Log clock offset as a health metric; scoring is only valid when truth and sensor timestamps agree.
+1.  Use my own drone's ArduPilot logs with GNSS as truth; add RTK if possible for tighter truth position.
+2.  Put GPS PPS plus chrony on every node so all clocks discipline against the same pulse.
+3.  Log clock offset as a health metric; scoring is only valid when truth and sensor timestamps agree.
 
 ### Phase 3: Scenario cards in YAML (weeks 5-6)
 
-- Define a card schema: approach type (radial, tangential, hover, descent), speed band, altitude, drone count, class (micro or mini UAS), environment tags (rain, fog, snow, night, clutter), and an explicit detection definition.
-
-- Write cards mirroring the sandbox scenarios: fixed base 2.5 km radius, five-vehicle patrol, 12 dismounted soldiers, urban 4x4 blocks up to 10 storeys, frigate-sized ship, 10 km linear border.
-
-- Define detection before flying anything; a detection definition written after seeing data is not a definition.
+1.  Define a card schema: approach type (radial, tangential, hover, descent), speed band, altitude, drone count, class (micro or mini UAS), environment tags (rain, fog, snow, night, clutter), and an explicit detection definition.
+2.  Write cards mirroring the sandbox scenarios: fixed base 2.5 km radius, five-vehicle patrol, 12 dismounted soldiers, urban 4x4 blocks up to 10 storeys, frigate-sized ship, 10 km linear border.
+3.  Define detection before flying anything; a detection definition written after seeing data is not a definition.
 
 ### Phase 4: Simulation at scale (weeks 6-9)
 
-- Stand up ArduPilot SITL multi-drone instances as truth, including swarm cards of 3+ drones.
-
-- Model sensors with detection probability and noise vs range so simulated detections behave like the real sensor class being scored.
-
-- Make the same pipeline replay recorded real logs unchanged, so sim and live runs share one scoring path.
+1.  Stand up ArduPilot SITL multi-drone instances as truth, including swarm cards of 3+ drones.
+2.  Model sensors with detection probability and noise vs range so simulated detections behave like the real sensor class being scored.
+3.  Make the same pipeline replay recorded real logs unchanged, so sim and live runs share one scoring path.
 
 ### Phase 5: Scoring (weeks 8-10)
 
-- Implement Stone Soup SIAP metrics: completeness, ambiguity, spuriousness, continuity.
-
-- Add OSPA for multi-object tracking error and CLEAR-MOT for tracking identity quality.
-
-- Add the operational metrics: detection probability vs range, first-detection range distribution, time to first alert, false alarms per hour, localization error vs range.
+1.  Implement Stone Soup SIAP metrics: completeness, ambiguity, spuriousness, continuity.
+2.  Add OSPA for multi-object tracking error and CLEAR-MOT for tracking identity quality.
+3.  Add the operational metrics: detection probability vs range, first-detection range distribution, time to first alert, false alarms per hour, localization error vs range.
 
 ### Phase 6: Coverage planner (weeks 10-12)
 
-- Take the measured detection probability vs range curve from Phase 5 scoring as input.
-
-- Run Monte Carlo placement to compute node count and spacing for the 2.5 km fixed-base scenario and the 10 km linear-border scenario.
-
-- Report cost per kilometre of coverage, the number the sandbox implicitly asks for when it says to state node count and spacing.
+1.  Take the measured detection probability vs range curve from Phase 5 scoring as input.
+2.  Run Monte Carlo placement to compute node count and spacing for the 2.5 km fixed-base scenario and the 10 km linear-border scenario.
+3.  Report cost per kilometre of coverage, the number the sandbox implicitly asks for when it says to state node count and spacing.
 
 ### Phase 7: Continuous integration (weeks 10-13)
 
-- Run the simulated scenario suite nightly with regression thresholds: a drop in detection probability or a rise in false alarms fails the pipeline.
-
-- Version data with DVC so results are reproducible against the exact truth logs that produced them.
-
-- Publish an HTML report artifact per run and ship signed container images for every component.
+1.  Run the simulated scenario suite nightly with regression thresholds: a drop in detection probability or a rise in false alarms fails the pipeline.
+2.  Version data with DVC so results are reproducible against the exact truth logs that produced them.
+3.  Publish an HTML report artifact per run and ship signed container images for every component.
 
 ### Phase 8: Fleet operations (weeks 12-16)
 
-- Signed A/B over-the-air updates: Mender, RAUC, or my own signed flow; a tampered update must be rejected, reusing the secure fleet updates work.
-
-- Prometheus health monitoring per node: battery, temperature, GNSS lock, clock offset, link quality, with alerts on drift.
-
-- A per-site acceptance test that a node must pass before it counts as installed, plus a maintenance schedule and spares log.
-
-- Runbooks mirroring the tender lifecycle: install, integrate, test, validate, maintain, sustain, modernize.
+1.  Signed A/B over-the-air updates: Mender, RAUC, or my own signed flow; a tampered update must be rejected, reusing the [secure fleet updates](https://github.com/TYFSADIK/secure-fleet-updates) work.
+2.  Prometheus health monitoring per node: battery, temperature, GNSS lock, clock offset, link quality, with alerts on drift.
+3.  A per-site acceptance test that a node must pass before it counts as installed, plus a maintenance schedule and spares log.
+4.  Runbooks mirroring the tender lifecycle: install, integrate, test, validate, maintain, sustain, modernize.
 
 ### Phase 9: Failure envelope (ongoing)
 
-- Push each metric to failure: increase range, speed, swarm size, clutter and weather tags until the score collapses.
-
-- Publish the limit for each metric. The sandbox favours teams that understand where their system stops working; this phase is where that understanding is manufactured.
+1.  Push each metric to failure: increase range, speed, swarm size, clutter and weather tags until the score collapses.
+2.  Publish the limit for each metric. The sandbox favours teams that understand where their system stops working; this phase is where that understanding is manufactured.
 
 ## Spec-Gap Table
 
 Honest status against the sandbox spec, as of publication. Everything is Planned or Not tested; nothing here is claimed beyond the build guide itself.
 
 | Sandbox requirement | Status | Notes |
-| --- | --- | --- |
+|----|----|----|
 | SAPIENT (BSI Flex 335) interface on nodes | Planned | Phase 0-1; compliance test harness version predates Flex 335 v2, interface version to check |
 | C2 integration: Cursor on Target / TAK | Planned | Phase 1 bridge via snstac sapientcot (verify version support) plus native CoT output |
 | C2 integration: JREAP-C J-series, VMF K-series | Not planned | No equipment or access; stated honestly as out of scope |
@@ -209,25 +180,15 @@ Honest status against the sandbox spec, as of publication. Everything is Planned
 ## Metrics to Publish
 
 - Stone Soup SIAP metrics: completeness, ambiguity, spuriousness, continuity.
-
 - OSPA (optimal subpattern assignment) for multi-object tracking error.
-
 - CLEAR-MOT for tracking identity quality.
-
 - Detection probability vs range, per scenario card and aggregated.
-
 - First-detection range distribution (the early-warning number).
-
 - Time to first alert.
-
 - False alarms per hour, with birds and aircraft logged as their own class.
-
 - Localization error vs range.
-
 - Clock offset per node as a time-sync health metric.
-
 - Coverage planner outputs: node count, spacing, cost per kilometre.
-
 - Fleet health: battery, temperature, GNSS lock, link quality per node.
 
 ## Hardware to Buy First
@@ -235,71 +196,66 @@ Honest status against the sandbox spec, as of publication. Everything is Planned
 This build is mostly software; the plan names no exotic hardware. The list below is the minimum implied by the phases, and it will grow once a specific sensor class is chosen for the nodes.
 
 - A drone running ArduPilot with GNSS (RTK if possible) as the known-truth target for live scoring runs.
-
 - GPS PPS receivers and antennas, one per node, for chrony time discipline.
-
 - Low-cost sensor nodes (acoustic, optical, or RF receive-only); the exact sensor set is chosen after Phase 0, since the sandbox deprioritizes plain unimproved detection.
-
 - A host machine (existing homelab capacity) for the fusion node, TAK Server, scoring harness, CI runners and Prometheus.
-
 - Spares per the Phase 8 spares log, sized once node count is known.
 
 ## Safety and Legal Notes
 
 - Defensive only: detect, score, plan. Nothing in this build jams, spoofs, or carries anything.
-
 - RF receive-only unless licensed. Low emissions are preferred by the sandbox; any emitter would need a DND 552 spectrum form, and none is planned.
-
 - Test only my own gear, with permission. Ground-truth drone flights follow the same Transport Canada rules as the other drone builds on this site.
-
 - Birds and aircraft create false alarms. They are logged as their own class, never silently dropped, because hidden filtering is how false-alarm rates get lied about.
-
 - Define detection before flying. The detection definition is part of the scenario card, written before data exists.
-
 - Synthetic data for anything mimicking protected material, per the shared rules for all six builds.
 
 ## Frequently Asked Questions
 
-**Q: What is SAPIENT and BSI Flex 335?**
+SAPIENT is the counter-drone sensor fusion interface standard published by BSI as Flex 335 (version 2, March 2024, free from BSI; verify date). Messages are protobuf over TCP from edge sensor nodes to a fusion node. Dstl released open-source middleware and a compliance test harness under Apache 2.0 in 2022, which predates v2, so the interface version must be checked.
 
-A: SAPIENT is the counter-drone sensor fusion interface standard published by BSI as Flex 335 (version 2, March 2024, free from BSI; verify date). Messages are protobuf over TCP from edge sensor nodes to a fusion node. Dstl released open-source middleware and a compliance test harness under Apache 2.0 in 2022, which predates v2, so the interface version must be checked.
+Fly or simulate YAML scenario cards (approach, speed band, altitude, drone count, environment tags) against time-synced ground truth, then score with Stone Soup SIAP metrics (completeness, ambiguity, spuriousness, continuity), OSPA and CLEAR-MOT, plus detection probability vs range, time to first alert, false alarms per hour and localization error.
 
-**Q: How do you score a counter-drone detection system honestly?**
+Systems that integrate into military command and control (JREAP-C J-series, VMF K-series, Cursor on Target, SAPIENT), networks of low-cost sensors, and honest handling of hard cases: drones under 250 g, fast FPV, swarms of 3+, fibre-optic tethered drones, birds and clutter, and rain, fog, snow and night. Detect-only systems are accepted.
 
-A: Fly or simulate YAML scenario cards (approach, speed band, altitude, drone count, environment tags) against time-synced ground truth, then score with Stone Soup SIAP metrics (completeness, ambiguity, spuriousness, continuity), OSPA and CLEAR-MOT, plus detection probability vs range, time to first alert, false alarms per hour and localization error.
+No. This is a published build guide, status Planned. Every component, from the SAPIENT adapter to the coverage planner, is described as phases to execute, and the spec-gap table marks each sandbox requirement as planned or not tested. Measured results will be published here after each phase completes.
 
-**Q: What does the IDEaS counter-drone sandbox ask for?**
-
-A: Systems that integrate into military command and control (JREAP-C J-series, VMF K-series, Cursor on Target, SAPIENT), networks of low-cost sensors, and honest handling of hard cases: drones under 250 g, fast FPV, swarms of 3+, fibre-optic tethered drones, birds and clutter, and rain, fog, snow and night. Detect-only systems are accepted.
-
-**Q: Is anything on this page built or tested yet?**
-
-A: No. This is a published build guide, status Planned. Every component, from the SAPIENT adapter to the coverage planner, is described as phases to execute, and the spec-gap table marks each sandbox requirement as planned or not tested. Measured results will be published here after each phase completes.
-
-**Q: How many sensor nodes does a 2.5 km base defence need?**
-
-A: That is exactly what the coverage planner computes. Phase 6 takes measured detection probability vs range from scored scenarios and runs Monte Carlo placement to return node count and spacing for the 2.5 km fixed-base and 10 km linear-border scenarios, with a cost per kilometre of coverage.
+That is exactly what the coverage planner computes. Phase 6 takes measured detection probability vs range from scored scenarios and runs Monte Carlo placement to return node count and spacing for the 2.5 km fixed-base and 10 km linear-border scenarios, with a cost per kilometre of coverage.
 
 ## Related Builds
 
-- Counter-Drone Sensor Fusion: the sensor-side build this harness is designed to score and stress to failure.
-
-- Secure Fleet Updates: the signed A/B OTA and measured-boot work reused in Phase 8 fleet operations.
-
-- Decision Black Box: tamper-evident logging, the same evidence discipline this harness applies to acceptance tests and scoring runs.
-
-- Thermal Search-and-Rescue Drone: the ArduPilot drone platform whose logged flights double as ground-truth targets here.
-
-- Defence Hardware Program: the parent page for all six Canadian defence build guides.
+- [Counter-Drone Sensor Fusion](https://github.com/TYFSADIK/counter-drone-sensor-fusion): the sensor-side build this harness is designed to score and stress to failure.
+- [Secure Fleet Updates](https://github.com/TYFSADIK/secure-fleet-updates): the signed A/B OTA and measured-boot work reused in Phase 8 fleet operations.
+- [Decision Black Box](https://github.com/TYFSADIK/decision-black-box): tamper-evident logging, the same evidence discipline this harness applies to acceptance tests and scoring runs.
+- [Thermal Search-and-Rescue Drone](https://github.com/TYFSADIK/thermal-sar-drone): the ArduPilot drone platform whose logged flights double as ground-truth targets here.
+- [Defence Hardware Program](https://github.com/TYFSADIK/defence-hardware-program): the parent page for all six Canadian defence build guides.
 
 ## Roadmap
 
 Order of work across the six builds puts this build first, together with the secure-autonomy build, because both are software and simulation and can run through the southern Ontario winter. The calendar: now to December is this harness, the secure-autonomy build, the sovereign AI enclave, plus bench work on the Arctic drone; December to March is snow and cold field work for the outdoor builds; April to May after ice-out is water trials. That means Phases 0 through 7 of this build should be running nightly in CI before any outdoor flight season opens, and live scoring runs with the ground-truth drone slot into spring 2027.
 
-Funding and eligibility context, named as programs without invented links: the MINERVA challenges run through Innovative Solutions Canada for incorporated Canadian companies at TRL 5-9, and the IDEaS counter-drone sandbox is open to individuals, academia, non-profits and industry, with the next sandbox expected around 2028 and every participant receiving $20,000. A published, standards-compliant, honestly scored harness is exactly the portfolio evidence those programs reward. Results will be appended to this page phase by phase, with the spec-gap table updated as rows move from Planned to tested.
+Funding and eligibility context, named as programs without invented links: the MINERVA challenges run through Innovative Solutions Canada for incorporated Canadian companies at TRL 5-9, and the IDEaS counter-drone sandbox is open to individuals, academia, non-profits and industry, with the next sandbox expected around 2028 and every participant receiving \$20,000. A published, standards-compliant, honestly scored harness is exactly the portfolio evidence those programs reward. Results will be appended to this page phase by phase, with the spec-gap table updated as rows move from Planned to tested.
 
 ## Cite This Page
 
-**Q: Citation formats**
+**Plain text**
 
-A: Plain text
+    Taki Sadik, "Counter-Drone Test-and-Scoring Harness Build Guide", TYFSADIK, https://github.com/TYFSADIK/counter-drone-scoring-harness (accessed 2026-10-24).
+
+**BibTeX**
+
+    @misc{sadik-counter-drone-scoring-harness,
+      author  = {Sadik, MD. Taki Yasir Faraji},
+      title   = {Counter-Drone Test-and-Scoring Harness Build Guide},
+      year    = {2026},
+      url     = {https://github.com/TYFSADIK/counter-drone-scoring-harness},
+      urldate = {2026-10-24}
+    }
+
+**APA**
+
+    Sadik, M. T. Y. F. (2026). Counter-Drone Test-and-Scoring Harness Build Guide. TYFSADIK. https://github.com/TYFSADIK/counter-drone-scoring-harness
+
+---
+
+Original page: <https://github.com/TYFSADIK/counter-drone-scoring-harness>
